@@ -33,7 +33,7 @@ class JokerWebFragment : Fragment() {
 
     private var jokerPathCallback: ValueCallback<Array<Uri>>? = null
     private lateinit var webView: WebView
-    private lateinit var parmaUrl: String
+    private lateinit var jokerUrl: String
 
     private var uri: Uri? = null
 
@@ -54,11 +54,11 @@ class JokerWebFragment : Fragment() {
 
         setUpWebView()
 
-        parmaUrl = Objects.requireNonNull(activity)!!
+        jokerUrl = Objects.requireNonNull(activity)!!
             .getSharedPreferences("jokerSharedPreferences", Context.MODE_PRIVATE)
             .getString("joker_url", "").toString()
 
-        webView.loadUrl(parmaUrl)
+        webView.loadUrl(jokerUrl)
 
         return rootInflater
     }
@@ -140,7 +140,21 @@ class JokerWebFragment : Fragment() {
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (request != null) {
-                        checkPermissions()
+                        Dexter.withContext(context)
+                            .withPermissions(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
+                            .withListener(object : MultiplePermissionsListener {
+
+                                override fun onPermissionsChecked(multiplePermissionsReport: MultiplePermissionsReport) {
+                                    Log.i("REQUEST_TEST", request.resources[0])
+                                }
+
+                                override fun onPermissionRationaleShouldBeShown(
+                                    list: List<com.karumi.dexter.listener.PermissionRequest>,
+                                    permissionToken: PermissionToken
+                                ) {
+                                }
+
+                            }).check()
                     }
                 }
             }
@@ -157,20 +171,20 @@ class JokerWebFragment : Fragment() {
 
                 if (actionImageIntent.resolveActivity(Objects.requireNonNull(activity)!!.packageManager) != null) {
 
-                    var pamaFile: File? = null
+                    var jokerFile: File? = null
 
                     try {
-                        pamaFile = createImage()
+                        jokerFile = createNewImage()
                     } catch (ex: IOException) {
                         Log.e("TAG_CREATE_IMAGE", " error!", ex)
                     }
 
-                    if (pamaFile != null) {
+                    if (jokerFile != null) {
 
                         val jRoomUri = FileProvider.getUriForFile(
                             Objects.requireNonNull(context)!!,
                             activity!!.application.packageName + ".provider",
-                            pamaFile
+                            jokerFile
                         )
 
                         uri = jRoomUri
@@ -203,8 +217,8 @@ class JokerWebFragment : Fragment() {
                 override fun handleOnBackPressed() {
                     if (webView.canGoBack()) {
                         webView.goBack()
-                    } else if (!webView.canGoBack() && webView.url != parmaUrl) {
-                        webView.loadUrl(parmaUrl)
+                    } else if (!webView.canGoBack() && webView.url != jokerUrl) {
+                        webView.loadUrl(jokerUrl)
                     } else {
                         Objects.requireNonNull(activity)!!.finish()
                     }
@@ -212,30 +226,13 @@ class JokerWebFragment : Fragment() {
             })
     }
 
-    private fun checkPermissions() {
-        Dexter.withContext(context)
-            .withPermissions(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
-            .withListener(object : MultiplePermissionsListener {
-
-                override fun onPermissionsChecked(multiplePermissionsReport: MultiplePermissionsReport) {
-                    //Log.i("REQUEST_TEST", request.resources[0])
-                }
-
-                override fun onPermissionRationaleShouldBeShown(
-                    list: List<com.karumi.dexter.listener.PermissionRequest>,
-                    permissionToken: PermissionToken
-                ) {
-                }
-
-            }).check()
-    }
 
     @Throws(IOException::class)
-    private fun createImage(): File? {
+    private fun createNewImage(): File? {
 
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
 
-        val jRoomFile = "PAMA" + timeStamp + "_"
+        val jRoomFile = "JOKER" + timeStamp + "_"
 
         val jRoomExternal =
             Objects.requireNonNull(activity)!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
