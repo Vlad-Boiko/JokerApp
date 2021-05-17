@@ -35,6 +35,8 @@ class JokerWebFragment : Fragment(R.layout.joker_web_fragment) {
     private lateinit var uri: Uri
     private lateinit var jokerUrl: String
     private val actionImageIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+    var jokerFile: File? = null
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -112,15 +114,14 @@ class JokerWebFragment : Fragment(R.layout.joker_web_fragment) {
                 ) != null
             ) {
 
-                var jokerFile: File? = null
 
                 try {
-                    val timeStamp =
-                        SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-
                     jokerFile =
                         File.createTempFile(
-                            "JOKER" + timeStamp + "_", ".jpg", Objects.requireNonNull(activity)!!
+                            "JOKER" + SimpleDateFormat(
+                                "yyyyMMdd_HHmmss",
+                                Locale.getDefault()
+                            ).format(Date()) + "_", ".jpg", Objects.requireNonNull(activity)!!
                                 .getExternalFilesDir(Environment.DIRECTORY_PICTURES)
                         )
                 } catch (ex: IOException) {
@@ -132,7 +133,7 @@ class JokerWebFragment : Fragment(R.layout.joker_web_fragment) {
                     val jRoomUri = FileProvider.getUriForFile(
                         Objects.requireNonNull(context)!!,
                         activity!!.application.packageName + ".provider",
-                        jokerFile
+                        jokerFile!!
                     )
 
                     uri = jRoomUri
@@ -186,15 +187,13 @@ class JokerWebFragment : Fragment(R.layout.joker_web_fragment) {
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-
+        var result: Any?
         if (requestCode == RESULT_CODE) {
-
             if (jokerPathCallback == null) return
-
-            val result = if (data == null || resultCode != Activity.RESULT_OK) null else data.data
-
+            if (data == null || resultCode != Activity.RESULT_OK) result = null
+            else result = data.data
             if (result != null && jokerPathCallback != null) {
-                jokerPathCallback!!.onReceiveValue(arrayOf(result))
+                jokerPathCallback!!.onReceiveValue(arrayOf(result as Uri))
             }
         }
 
