@@ -2,101 +2,76 @@ package com.joker.it.apps.jokerapp.activitys
 
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Base64
 import android.util.Log
-import android.view.View
-import android.view.animation.Animation
-import android.view.animation.AnimationUtils
-import android.widget.ImageView
-import android.widget.LinearLayout
 import androidx.fragment.app.FragmentActivity
-import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
-import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
+import com.joker.it.apps.jokerapp.Constants.JOKER_URL
 import com.joker.it.apps.jokerapp.R
-import com.joker.it.apps.jokerapp.fragments.JokerWebFragment
+import com.joker.it.apps.jokerapp.ShowingInterface
+import com.joker.it.apps.jokerapp.activitys.fragments.JokerWebFragment
+import com.joker.it.apps.jokerapp.activitys.fragments.StartScreenFragment
 import org.apache.commons.validator.routines.UrlValidator
 import java.util.*
 
-class JokerActivity : FragmentActivity() {
-
-    private var justStarted = true
-
-    private lateinit var iconStart: ImageView
-    private lateinit var startView: LinearLayout
+class JokerActivity : FragmentActivity(), ShowingInterface {
 
 
-    private lateinit var remoteConfig: FirebaseRemoteConfig
+    private lateinit var firebaseConfig: FirebaseRemoteConfig
     private lateinit var jokerSharedPreferences: SharedPreferences
+
+    lateinit var tmpUrl: String
+    private var jokerUrl: Any? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.joker_activity)
 
-        startView = findViewById(R.id.start_view)
-        iconStart = findViewById(R.id.icon_start)
-
-        configFirebase()
+        initFirebaseConfig()
 
         if (savedInstanceState == null) {
 
-            if (justStarted) {
-                val iconStartAlphaAnimation: Animation =
-                    AnimationUtils.loadAnimation(this, R.anim.start_scale)
+            showStartScreen()
 
-                iconStart.startAnimation(iconStartAlphaAnimation)
-
-                val handler = Handler(Looper.getMainLooper())
-                val timer = Timer(false)
-                val timerTask: TimerTask = object : TimerTask() {
-                    override fun run() {
-                        handler.post {
-                            startView.visibility = View.GONE
-
-                            supportFragmentManager.beginTransaction()
-                                .replace(R.id.main_frame, JokerWebFragment.newInstance())
-                                .commitNow()
-                        }
-                    }
-                }
-
-                timer.schedule(timerTask, 2000)
-                justStarted = false
-
-            } else {
-                startView.visibility = View.GONE
-            }
         }
     }
 
-    private fun configFirebase() {
+    private fun initFirebaseConfig() {
 
-        remoteConfig = Firebase.remoteConfig
-        val configSettings = remoteConfigSettings {
-            minimumFetchIntervalInSeconds = 3600
-        }
 
-        remoteConfig.setDefaultsAsync(R.xml.joker_url)
-        remoteConfig.setConfigSettingsAsync(configSettings)
+        firebaseConfig = FirebaseRemoteConfig.getInstance()
 
-        remoteConfig.fetchAndActivate()
-            .addOnSuccessListener {
+        firebaseConfig.setConfigSettingsAsync(remoteConfigSettings {
+            minimumFetchIntervalInSeconds = 2000
+        })
 
-                val value = remoteConfig.getString("joker_url")
-                val validator = UrlValidator(arrayOf("http", "https"))
+        firebaseConfig.setDefaultsAsync(JOKER_URL)
+        firebaseConfig.activate()
 
-                val jokerUrl = if (validator.isValid(value)) value
-                else {
+        firebaseConfig.fetchAndActivate()
+            .addOnCompleteListener {
+
+                tmpUrl = firebaseConfig.getString("joker_url")
+
+                jokerUrl = if (UrlValidator(
+                        arrayOf(
+                            "http",
+                            "https"
+                        )
+                    ).isValid(tmpUrl)
+                ) tmpUrl else {
                     try {
-                        String(Base64.decode(value, Base64.DEFAULT))
+                        String(
+                            Base64.decode(
+                                tmpUrl,
+                                Base64.DEFAULT
+                            )
+                        )
                     } catch (e: IllegalArgumentException) {
-                        Log.e("VALUE_ERROR", "exc")
+                        Log.e("VALUE_ERROR", e.stackTraceToString())
                     }
                 }
-
                 jokerSharedPreferences = Objects.requireNonNull(this)!!
                     .getSharedPreferences("jokerSharedPreferences", MODE_PRIVATE)
 
@@ -104,5 +79,19 @@ class JokerActivity : FragmentActivity() {
                 editor.putString("joker_url", jokerUrl.toString())
                 editor.apply()
             }
+
+
+    }
+
+    override fun showStartScreen() {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, StartScreenFragment())
+            .commit()
+    }
+
+    override fun showWebView() {
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, JokerWebFragment())
+            .commit()
     }
 }
